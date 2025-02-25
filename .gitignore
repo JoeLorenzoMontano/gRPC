@@ -1,0 +1,47 @@
+# Ignore compiled and temporary files for C# gRPC project
+bin/
+obj/
+*.dll
+*.exe
+*.pdb
+*.log
+*.lock
+*.suo
+*.user
+*.cache
+*.csproj.user
+.vscode/
+.idea/
+.DS_Store
+
+# Ignore dependency folders
+lib/
+packages/
+node_modules/
+scripts/
+
+# Ignore generated gRPC files (if needed)
+protos/*.cs
+protos/*.py
+
+# Ignore Python virtual environments and cache
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+venv/
+.env
+.venv/
+
+# Ignore gRPC-generated files in Python (if not committed)
+hello_pb2.py
+hello_pb2_grpc.py
+pyvenv.cfg
+
+# Ignore environment and dependency files
+*.swp
+*.swn
+*.bak
+Pipfile.lock
+poetry.lock
+

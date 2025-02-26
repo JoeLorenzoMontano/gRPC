@@ -45,3 +45,4 @@ pyvenv.cfg
 Pipfile.lock
 poetry.lock
 
+/documents

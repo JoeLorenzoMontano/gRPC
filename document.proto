@@ -1,0 +1,47 @@
+syntax = "proto3";
+
+package document;
+
+service DocumentService {
+  // Upload a document (text or PDF)
+  rpc UploadDocument (UploadRequest) returns (UploadResponse);
+
+  // Retrieve a small document by its ID (for text-based content)
+  rpc GetDocument (DocumentRequest) returns (DocumentResponse);
+
+  // Stream a large document (e.g., PDFs) for download
+  rpc DownloadDocument (DownloadRequest) returns (stream DocumentChunk);
+}
+
+// Request for uploading a document
+message UploadRequest {
+  string filename = 1;
+  bytes content = 2;
+}
+
+// Response for successful upload
+message UploadResponse {
+  string document_id = 1;
+  string message = 2;
+}
+
+// Request for retrieving a document
+message DocumentRequest {
+  string document_id = 1;
+}
+
+// Response for retrieving a document (used for small text-based documents)
+message DocumentResponse {
+  string filename = 1;
+  bytes content = 2;
+}
+
+// Request for downloading a large document (streaming)
+message DownloadRequest {
+  string document_id = 1;
+}
+
+// Streaming response for downloading a document
+message DocumentChunk {
+  bytes file_data = 1;
+}

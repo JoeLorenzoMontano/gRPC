@@ -12,36 +12,44 @@ services:
       KAFKA_NODE_ID: 1
       KAFKA_PROCESS_ROLES: controller,broker
       KAFKA_CONTROLLER_QUORUM_VOTERS: "1@kafka-1:9093,2@kafka-2:9093"
-      KAFKA_LISTENERS: PLAINTEXT://kafka-1:9092,CONTROLLER://kafka-1:9093
-      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka-1:9092
+      KAFKA_LISTENERS: INTERNAL://kafka-1:29092,EXTERNAL://0.0.0.0:9092,CONTROLLER://kafka-1:9093
+      KAFKA_ADVERTISED_LISTENERS: INTERNAL://kafka-1:29092,EXTERNAL://localhost:9092
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: INTERNAL:PLAINTEXT,EXTERNAL:PLAINTEXT,CONTROLLER:PLAINTEXT
       KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
-      KAFKA_LOG_DIRS: /var/lib/kafka/data
-      CLUSTER_ID: "U3GSP5lWSXi6dXcSgEZW3A"
+      KAFKA_INTER_BROKER_LISTENER_NAME: INTERNAL
+      #KAFKA_LOG_DIRS: /var/lib/kafka/data-1
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
+      CLUSTER_ID: SmKe3NiwR4qjavyTxT08Dw
     networks:
       - kafka-net
     volumes:
-      - kafka1_data:/var/lib/kafka/data
+      - kafka1_data:/var/lib/kafka/data-1
+      - ./server-1.properties:/etc/kafka/server.properties
 
   kafka-2:
     image: confluentinc/cp-kafka:latest
     container_name: kafka-2
     ports:
-      - "9094:9092"
+      - "9094:9094"
       - "29094:29092"
       - "9095:9093"
     environment:
       KAFKA_NODE_ID: 2
       KAFKA_PROCESS_ROLES: controller,broker
       KAFKA_CONTROLLER_QUORUM_VOTERS: "1@kafka-1:9093,2@kafka-2:9093"
-      KAFKA_LISTENERS: PLAINTEXT://kafka-2:9092,CONTROLLER://kafka-2:9093
-      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka-2:9092
+      KAFKA_LISTENERS: INTERNAL://kafka-2:29092,EXTERNAL://0.0.0.0:9094,CONTROLLER://kafka-2:9093
+      KAFKA_ADVERTISED_LISTENERS: INTERNAL://kafka-2:29092,EXTERNAL://localhost:9094
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: INTERNAL:PLAINTEXT,EXTERNAL:PLAINTEXT,CONTROLLER:PLAINTEXT
       KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
-      KAFKA_LOG_DIRS: /var/lib/kafka/data
-      CLUSTER_ID: "U3GSP5lWSXi6dXcSgEZW3A"
+      KAFKA_INTER_BROKER_LISTENER_NAME: INTERNAL
+      #KAFKA_LOG_DIRS: /var/lib/kafka/data-2
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
+      CLUSTER_ID: SmKe3NiwR4qjavyTxT08Dw
     networks:
       - kafka-net
     volumes:
-      - kafka2_data:/var/lib/kafka/data
+      - kafka2_data:/var/lib/kafka/data-2
+      - ./server-2.properties:/etc/kafka/server.properties
 
 networks:
   kafka-net:

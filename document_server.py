@@ -70,12 +70,13 @@ class DocumentService(document_pb2_grpc.DocumentServiceServicer):
 
         if not os.path.exists(filepath):
             context.set_code(grpc.StatusCode.NOT_FOUND)
+            context.set_details("Document not found")
             return
 
         try:
             with open(filepath, "rb") as f:
                 while chunk := f.read(4096):  # Stream in 4KB chunks
-                    yield document_pb2.DownloadResponse(content=chunk)
+                    yield document_pb2.DocumentChunk(file_data=chunk)
         except Exception as e:
             context.set_code(grpc.StatusCode.INTERNAL)
             context.set_details(f"Error reading document: {str(e)}")

@@ -10,14 +10,16 @@ KAFKA_TOPIC = "document_uploaded"
 STORAGE_DIR = "documents"
 
 # Initialize Vector Database (ChromaDB)
-chroma_client = chromadb.PersistentClient(path="./chroma_db")
+chroma_client = chromadb.HttpClient(host="localhost", port=8000)
+# Verify connection by listing existing collections
+#print(chroma_client.list_collections())
 collection = chroma_client.get_or_create_collection(name="documents")
 
 # Kafka Consumer
 consumer = Consumer({
     "bootstrap.servers": KAFKA_BROKER,
     "group.id": "rag_processor",
-    "auto.offset.reset": "earliest"
+    "auto.offset.reset": "latest"
 })
 
 consumer.subscribe([KAFKA_TOPIC])

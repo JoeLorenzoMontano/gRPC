@@ -64,6 +64,22 @@ class DocumentService(document_pb2_grpc.DocumentServiceServicer):
             context.set_code(grpc.StatusCode.INTERNAL)
             return document_pb2.DocumentResponse()
 
+    def DownloadDocument(self, request, context):
+        """Streams document content in chunks to the client"""
+        filepath = os.path.join(STORAGE_DIR, request.document_id)
+
+        if not os.path.exists(filepath):
+            context.set_code(grpc.StatusCode.NOT_FOUND)
+            return
+
+        try:
+            with open(filepath, "rb") as f:
+                while chunk := f.read(4096):  # Stream in 4KB chunks
+                    yield document_pb2.DownloadResponse(content=chunk)
+        except Exception as e:
+            context.set_code(grpc.StatusCode.INTERNAL)
+            context.set_details(f"Error reading document: {str(e)}")
+
 def serve():
     server = grpc.server(futures.ThreadPoolExecutor(max_workers=10))
     document_pb2_grpc.add_DocumentServiceServicer_to_server(DocumentService(), server)

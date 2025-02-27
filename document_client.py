@@ -53,7 +53,7 @@ if __name__ == "__main__":
     uploaded_doc_id = upload_document("example.pdf")
 
     # Download a text document
-    get_document(uploaded_doc_id)
+    #get_document(uploaded_doc_id)
 
     # Stream and save a large PDF
-    download_document(uploaded_doc_id, "example.pdf")
+    download_document(uploaded_doc_id, "downloaded-example.pdf")

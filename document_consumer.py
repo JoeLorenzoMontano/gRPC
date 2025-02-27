@@ -27,9 +27,9 @@ while True:
     event = json.loads(msg.value().decode("utf-8"))
     document_id = event["document_id"]
     filename = event["filename"]
-    file_path = event["file_path"]
+    content_type = event["content_type"]
 
     print(f"New document uploaded: {filename} (ID: {document_id})")
-    print(f"File stored at: {file_path}")
+    print(f"Content Type: {content_type}")
 
     # Further processing (e.g., indexing into FAISS or Elasticsearch)

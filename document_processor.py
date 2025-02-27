@@ -30,6 +30,7 @@ def extract_text_from_pdf(filepath):
     return text.strip()
 
 def process_document(event):
+    print(event)
     document_id = event["document_id"]
     filename = event["filename"]
     content_type = event["content_type"]
@@ -39,4 +40,34 @@ def process_document(event):
         print(f"File {filepath} not found, skipping...")
         return
 
-    text_content =
+    text_content = ""
+    if content_type == "pdf":
+        text_content = extract_text_from_pdf(filepath)
+    else:
+        with open(filepath, "r") as f:
+            text_content = f.read()
+
+    if text_content:
+        # Store in ChromaDB
+        collection.add(
+            ids=[document_id],
+            documents=[text_content],
+            metadatas=[{"filename": filename}]
+        )
+        print(f"Document {filename} processed and stored in vector DB.")
+
+if __name__ == "__main__":
+    print("Kafka Consumer listening for documents...")
+    while True:
+        msg = consumer.poll(1.0)
+        if msg is None:
+            continue
+        if msg.error():
+            if msg.error().code() == KafkaException._PARTITION_EOF:
+                continue
+            else:
+                print(f"Consumer error: {msg.error()}")
+                continue
+        
+        event_data = json.loads(msg.value().decode("utf-8"))
+        process_document(event_data)

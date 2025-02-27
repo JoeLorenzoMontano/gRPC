@@ -1,9 +1,8 @@
-version: "3.9"
-
 services:
   kafka-1:
     image: confluentinc/cp-kafka:latest
     container_name: kafka-1
+    restart: unless-stopped
     ports:
       - "9092:9092"
       - "29092:29092"
@@ -11,50 +10,109 @@ services:
     environment:
       KAFKA_NODE_ID: 1
       KAFKA_PROCESS_ROLES: controller,broker
-      KAFKA_CONTROLLER_QUORUM_VOTERS: "1@kafka-1:9093,2@kafka-2:9093"
+      KAFKA_CONTROLLER_QUORUM_VOTERS: "1@kafka-1:9093,2@kafka-2:9093,3@kafka-3:9093"
       KAFKA_LISTENERS: INTERNAL://kafka-1:29092,EXTERNAL://0.0.0.0:9092,CONTROLLER://kafka-1:9093
-      KAFKA_ADVERTISED_LISTENERS: INTERNAL://kafka-1:29092,EXTERNAL://localhost:9092
+      KAFKA_ADVERTISED_LISTENERS: INTERNAL://kafka-1:29092,EXTERNAL://192.168.1.203:9092
       KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: INTERNAL:PLAINTEXT,EXTERNAL:PLAINTEXT,CONTROLLER:PLAINTEXT
       KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
       KAFKA_INTER_BROKER_LISTENER_NAME: INTERNAL
-      #KAFKA_LOG_DIRS: /var/lib/kafka/data-1
       KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
-      CLUSTER_ID: SmKe3NiwR4qjavyTxT08Dw
+      CLUSTER_ID: ${KAFKA_CLUSTER_ID}
     networks:
       - kafka-net
     volumes:
-      - kafka1_data:/var/lib/kafka/data-1
+      - kafka1_data:/var/lib/kafka/data
       - ./server-1.properties:/etc/kafka/server.properties
 
   kafka-2:
     image: confluentinc/cp-kafka:latest
     container_name: kafka-2
+    restart: unless-stopped
     ports:
-      - "9094:9094"
+      - "9094:9092"
       - "29094:29092"
       - "9095:9093"
     environment:
       KAFKA_NODE_ID: 2
       KAFKA_PROCESS_ROLES: controller,broker
-      KAFKA_CONTROLLER_QUORUM_VOTERS: "1@kafka-1:9093,2@kafka-2:9093"
+      KAFKA_CONTROLLER_QUORUM_VOTERS: "1@kafka-1:9093,2@kafka-2:9093,3@kafka-3:9093"
       KAFKA_LISTENERS: INTERNAL://kafka-2:29092,EXTERNAL://0.0.0.0:9094,CONTROLLER://kafka-2:9093
-      KAFKA_ADVERTISED_LISTENERS: INTERNAL://kafka-2:29092,EXTERNAL://localhost:9094
+      KAFKA_ADVERTISED_LISTENERS: INTERNAL://kafka-2:29092,EXTERNAL://192.168.1.203:9094
       KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: INTERNAL:PLAINTEXT,EXTERNAL:PLAINTEXT,CONTROLLER:PLAINTEXT
       KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
       KAFKA_INTER_BROKER_LISTENER_NAME: INTERNAL
-      #KAFKA_LOG_DIRS: /var/lib/kafka/data-2
       KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
-      CLUSTER_ID: SmKe3NiwR4qjavyTxT08Dw
+      CLUSTER_ID: ${KAFKA_CLUSTER_ID}
     networks:
       - kafka-net
     volumes:
-      - kafka2_data:/var/lib/kafka/data-2
+      - kafka2_data:/var/lib/kafka/data
       - ./server-2.properties:/etc/kafka/server.properties
+
+  kafka-3:
+    image: confluentinc/cp-kafka:latest
+    container_name: kafka-3
+    restart: unless-stopped
+    ports:
+      - "9096:9092"
+      - "29096:29092"
+      - "9097:9093"
+    environment:
+      KAFKA_NODE_ID: 3
+      KAFKA_PROCESS_ROLES: controller,broker
+      KAFKA_CONTROLLER_QUORUM_VOTERS: "1@kafka-1:9093,2@kafka-2:9093,3@kafka-3:9093"
+      KAFKA_LISTENERS: INTERNAL://kafka-3:29092,EXTERNAL://0.0.0.0:9096,CONTROLLER://kafka-3:9093
+      KAFKA_ADVERTISED_LISTENERS: INTERNAL://kafka-3:29092,EXTERNAL://192.168.1.203:9096
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: INTERNAL:PLAINTEXT,EXTERNAL:PLAINTEXT,CONTROLLER:PLAINTEXT
+      KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
+      KAFKA_INTER_BROKER_LISTENER_NAME: INTERNAL
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
+      CLUSTER_ID: ${KAFKA_CLUSTER_ID}
+    networks:
+      - kafka-net
+    volumes:
+      - kafka3_data:/var/lib/kafka/data
+      - ./server-3.properties:/etc/kafka/server.properties
+
+  # Flink JobManager
+  flink-jobmanager:
+    image: flink:latest
+    container_name: flink-jobmanager
+    entrypoint: [ "bash", "-c", "start-cluster.sh" ]
+    environment:
+      - JOB_MANAGER_RPC_ADDRESS=flink-jobmanager
+    ports:
+      - "8081:8081"
+    networks:
+      - kafka-net
+
+  # Flink TaskManager
+  flink-taskmanager:
+    image: flink:latest
+    container_name: flink-taskmanager
+    entrypoint: [ "bash", "-c", "start-taskmanager.sh" ]
+    depends_on:
+      - flink-jobmanager
+    environment:
+      - JOB_MANAGER_RPC_ADDRESS=flink-jobmanager
+    networks:
+      - kafka-net
+
+  # ChromaDB for storing vector embeddings
+  chromadb:
+    image: chromadb/chroma:latest
+    container_name: chromadb-rag
+    ports:
+      - "8888:8000"
+    volumes:
+      - ./chromadb-data:/chroma/db
+    networks:
+      - kafka-net
 
 networks:
   kafka-net:
-    driver: bridge
 
 volumes:
   kafka1_data:
   kafka2_data:
+  kafka3_data:

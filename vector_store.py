@@ -37,40 +37,49 @@ class ChromaDBStore(VectorStore):
     
     def __init__(self, collection_name: str = None):
         """Initialize ChromaDB client and collection"""
-        # Connect without tenant/database specification
-        self.client = chromadb.HttpClient(
-            host=vector_db_config.chroma_host,
-            port=vector_db_config.chroma_port
-        )
-        
-        # Create tenant and database if they don't exist
-        tenant_name = "default_tenant"
-        database_name = "default_database"
-        
-        # Try to create tenant if it doesn't exist
         try:
-            tenants = self.client.list_tenants()
-            if tenant_name not in tenants:
-                self.client.create_tenant(tenant_name)
-                print(f"Created tenant: {tenant_name}")
-            
-            # Set tenant context
-            self.client.set_tenant(tenant_name)
-            
-            # Try to create database if it doesn't exist
-            databases = self.client.list_databases()
-            if database_name not in databases:
-                self.client.create_database(database_name)
-                print(f"Created database: {database_name}")
-            
-            # Set database context
-            self.client.set_database(database_name)
+            # Try to initialize without tenant (for older versions of ChromaDB)
+            self.client = chromadb.HttpClient(
+                host=vector_db_config.chroma_host,
+                port=vector_db_config.chroma_port
+            )
+            print("Initialized ChromaDB client without tenant specification")
         except Exception as e:
-            print(f"Error setting up tenant/database: {e}")
-            # Fall back to not specifying tenant/database
+            print(f"Error creating basic ChromaDB client: {e}")
+            # Fall back to PersistentClient if HttpClient fails
+            try:
+                import os
+                # Create directory for persistent storage
+                os.makedirs("chroma_data", exist_ok=True)
+                # Use persistent client instead
+                self.client = chromadb.PersistentClient(path="chroma_data")
+                print("Falling back to ChromaDB PersistentClient")
+            except Exception as e2:
+                print(f"Error creating fallback client: {e2}")
+                raise RuntimeError("Failed to initialize any ChromaDB client")
         
         self.collection_name = collection_name or vector_db_config.collection_name
-        self.collection = self.client.get_or_create_collection(name=self.collection_name)
+        
+        # Try to create or get collection with retries
+        max_retries = 3
+        retry_count = 0
+        last_error = None
+        
+        while retry_count < max_retries:
+            try:
+                self.collection = self.client.get_or_create_collection(name=self.collection_name)
+                print(f"Successfully connected to collection: {self.collection_name}")
+                break
+            except Exception as e:
+                last_error = e
+                retry_count += 1
+                print(f"Attempt {retry_count}: Error getting/creating collection: {e}")
+                # Sleep before retry
+                import time
+                time.sleep(1)
+        
+        if retry_count == max_retries:
+            raise RuntimeError(f"Failed to create collection after {max_retries} attempts: {last_error}")
         
     def add_documents(self, document_ids: List[str], documents: List[str],
                      embeddings: List[List[float]], metadatas: List[Dict[str, Any]]) -> None:

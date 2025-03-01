@@ -75,7 +75,13 @@ class DocumentService(document_pb2_grpc.DocumentServiceServicer):
             context.set_details(f"Error reading document: {str(e)}")
 
 def serve():
-    server = grpc.server(futures.ThreadPoolExecutor(max_workers=grpc_config.max_workers))
+    server = grpc.server(
+        futures.ThreadPoolExecutor(max_workers=grpc_config.max_workers),
+        options=[
+            ("grpc.max_receive_message_length", 100 * 1024 * 1024),  # 100MB
+            ("grpc.max_send_message_length", 100 * 1024 * 1024)  # 100MB
+        ]
+    )
     document_pb2_grpc.add_DocumentServiceServicer_to_server(DocumentService(), server)
     server_address = f"{grpc_config.server_host}:{grpc_config.server_port}"
     server.add_insecure_port(server_address)

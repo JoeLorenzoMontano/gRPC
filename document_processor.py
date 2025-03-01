@@ -4,7 +4,10 @@ import pdfplumber
 from confluent_kafka import Consumer, KafkaException
 import chromadb
 from langchain_ollama import OllamaEmbeddings
+from langchain_text_splitters import RecursiveCharacterTextSplitter
 from config import kafka_config, storage_config, vector_db_config, ollama_config
+
+ollama_client = OllamaClient()
 
 # Initialize Ollama Embeddings
 embedding_function = OllamaEmbeddings(base_url=ollama_config.base_url, model=ollama_config.model)
@@ -22,22 +25,30 @@ consumer = Consumer({
 
 consumer.subscribe([kafka_config.document_topic])
 
+# Text Splitter (Configurable)
+text_splitter = RecursiveCharacterTextSplitter(
+    chunk_size=512,  # Max tokens per chunk
+    chunk_overlap=100,  # Overlap between chunks to preserve context
+)
+
 def extract_text_from_pdf(filepath):
     """Extracts text from a PDF file."""
     text = ""
     with pdfplumber.open(filepath) as pdf:
         for page in pdf.pages:
-            text += page.extract_text() + "\n"
+            page_text = page.extract_text()
+            if page_text:
+                text += page_text + "\n"
     return text.strip()
 
-def get_embeddings(texts):
-    """Retrieves embeddings using OllamaEmbeddings."""
-    if texts:
-        return embedding_function.embed_documents(texts)
+def get_embeddings(text_chunks):
+    """Generates embeddings for multiple text chunks."""
+    if text_chunks:
+        return embedding_function.embed_documents(text_chunks)
     return None
 
 def process_document(event):
-    """Processes a document, extracts text, generates embeddings, and stores in ChromaDB."""
+    """Processes a document, extracts text, chunks it, generates embeddings, and stores in ChromaDB."""
     print(f"Processing event: {event}")
     
     document_id = event["document_id"]
@@ -58,20 +69,36 @@ def process_document(event):
             text_content = f.read()
 
     if text_content:
-        # Generate embeddings
-        embeddings = get_embeddings([text_content])
-        
-        if embeddings:
-            # Store in ChromaDB with embeddings
-            collection.add(
-                ids=[document_id],
-                documents=[text_content],
-                embeddings=embeddings,
-                metadatas=[{"filename": filename, "content_type": content_type}]
-            )
-            print(f"Document '{filename}' processed and stored in ChromaDB with embeddings.")
-        else:
-            print(f"Failed to generate embeddings for document '{filename}'.")
+        # Split into chunks
+        chunks = text_splitter.split_text(text_content)
+
+        for i, chunk in enumerate(chunks):
+            metadata = ollama_client.extract_metadata(chunk)  # Extract metadata for the current chunk
+
+            # Generate embedding for each chunk individually
+            embedding = get_embeddings([chunk])  # Ensure this returns a single embedding
+
+            if embedding:
+                chunk_id = f"{document_id}_chunk_{i}"  # Unique ID for each chunk
+
+                # Merge extracted metadata with additional metadata
+                merged_metadata = {
+                    "filename": filename,
+                    "content_type": content_type,
+                    "chunk_index": i,
+                    **metadata  # Merging extracted metadata dynamically
+                }
+
+                # Store in ChromaDB
+                collection.add(
+                    ids=[chunk_id],
+                    documents=[chunk],
+                    embeddings=embedding,  # Pass embedding as a list
+                    metadatas=[merged_metadata]  # Pass merged metadata
+                )
+                print(f"Chunk {i} of document '{filename}' processed and stored in ChromaDB.")
+            else:
+                print(f"Failed to generate embedding for chunk {i} of document '{filename}'.")
 
 if __name__ == "__main__":
     print("Kafka Consumer listening for documents...")

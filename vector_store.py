@@ -37,10 +37,38 @@ class ChromaDBStore(VectorStore):
     
     def __init__(self, collection_name: str = None):
         """Initialize ChromaDB client and collection"""
+        # Connect without tenant/database specification
         self.client = chromadb.HttpClient(
             host=vector_db_config.chroma_host,
             port=vector_db_config.chroma_port
         )
+        
+        # Create tenant and database if they don't exist
+        tenant_name = "default_tenant"
+        database_name = "default_database"
+        
+        # Try to create tenant if it doesn't exist
+        try:
+            tenants = self.client.list_tenants()
+            if tenant_name not in tenants:
+                self.client.create_tenant(tenant_name)
+                print(f"Created tenant: {tenant_name}")
+            
+            # Set tenant context
+            self.client.set_tenant(tenant_name)
+            
+            # Try to create database if it doesn't exist
+            databases = self.client.list_databases()
+            if database_name not in databases:
+                self.client.create_database(database_name)
+                print(f"Created database: {database_name}")
+            
+            # Set database context
+            self.client.set_database(database_name)
+        except Exception as e:
+            print(f"Error setting up tenant/database: {e}")
+            # Fall back to not specifying tenant/database
+        
         self.collection_name = collection_name or vector_db_config.collection_name
         self.collection = self.client.get_or_create_collection(name=self.collection_name)
         

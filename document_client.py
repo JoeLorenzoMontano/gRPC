@@ -1,13 +1,15 @@
 import grpc
 import document_pb2
 import document_pb2_grpc
+from config import grpc_config
 
 def upload_document(filename):
     """Uploads a document (text or PDF) to the server."""
     with open(filename, "rb") as f:
         file_content = f.read()
 
-    channel = grpc.insecure_channel("localhost:50051")
+    server_address = f"{grpc_config.server_host.replace('[::]', 'localhost')}:{grpc_config.server_port}"
+    channel = grpc.insecure_channel(server_address)
     stub = document_pb2_grpc.DocumentServiceStub(channel)
 
     request = document_pb2.UploadRequest(
@@ -21,7 +23,8 @@ def upload_document(filename):
 
 def get_document(doc_id):
     """Retrieves a small text document."""
-    channel = grpc.insecure_channel("localhost:50051")
+    server_address = f"{grpc_config.server_host.replace('[::]', 'localhost')}:{grpc_config.server_port}"
+    channel = grpc.insecure_channel(server_address)
     stub = document_pb2_grpc.DocumentServiceStub(channel)
 
     request = document_pb2.DocumentRequest(document_id=doc_id)
@@ -36,7 +39,8 @@ def get_document(doc_id):
 
 def download_document(doc_id, save_path):
     """Streams and saves a large PDF file."""
-    channel = grpc.insecure_channel("localhost:50051")
+    server_address = f"{grpc_config.server_host.replace('[::]', 'localhost')}:{grpc_config.server_port}"
+    channel = grpc.insecure_channel(server_address)
     stub = document_pb2_grpc.DocumentServiceStub(channel)
 
     request = document_pb2.DownloadRequest(document_id=doc_id)

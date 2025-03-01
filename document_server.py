@@ -6,22 +6,15 @@ from concurrent import futures
 from confluent_kafka import Producer
 import document_pb2
 import document_pb2_grpc
-
-# Kafka Config
-KAFKA_BROKER = "localhost:9092"
-KAFKA_TOPIC = "document_uploaded"
-
-# Storage directory
-STORAGE_DIR = "documents"
-os.makedirs(STORAGE_DIR, exist_ok=True)
+from config import kafka_config, storage_config, grpc_config
 
 # Kafka Producer
-producer = Producer({"bootstrap.servers": KAFKA_BROKER})
+producer = Producer({"bootstrap.servers": kafka_config.bootstrap_servers})
 
 class DocumentService(document_pb2_grpc.DocumentServiceServicer):
     def UploadDocument(self, request, context):
         document_id = str(uuid.uuid4())
-        filepath = os.path.join(STORAGE_DIR, document_id)
+        filepath = os.path.join(storage_config.storage_dir, document_id)
 
         try:
             with open(filepath, "wb") as f:
@@ -33,7 +26,7 @@ class DocumentService(document_pb2_grpc.DocumentServiceServicer):
                 "filename": request.filename,
                 "content_type": "pdf" if request.filename.endswith(".pdf") else "text"
             })
-            producer.produce(KAFKA_TOPIC, key=document_id, value=event)
+            producer.produce(kafka_config.document_topic, key=document_id, value=event)
             producer.flush()
 
             return document_pb2.UploadResponse(
@@ -46,7 +39,7 @@ class DocumentService(document_pb2_grpc.DocumentServiceServicer):
             return document_pb2.UploadResponse(document_id="", message="Failed to upload document.")
 
     def GetDocument(self, request, context):
-        filepath = os.path.join(STORAGE_DIR, request.document_id)
+        filepath = os.path.join(storage_config.storage_dir, request.document_id)
 
         if not os.path.exists(filepath):
             context.set_code(grpc.StatusCode.NOT_FOUND)
@@ -66,7 +59,7 @@ class DocumentService(document_pb2_grpc.DocumentServiceServicer):
 
     def DownloadDocument(self, request, context):
         """Streams document content in chunks to the client"""
-        filepath = os.path.join(STORAGE_DIR, request.document_id)
+        filepath = os.path.join(storage_config.storage_dir, request.document_id)
 
         if not os.path.exists(filepath):
             context.set_code(grpc.StatusCode.NOT_FOUND)
@@ -75,17 +68,18 @@ class DocumentService(document_pb2_grpc.DocumentServiceServicer):
 
         try:
             with open(filepath, "rb") as f:
-                while chunk := f.read(4096):  # Stream in 4KB chunks
+                while chunk := f.read(grpc_config.chunk_size):  # Stream in chunks
                     yield document_pb2.DocumentChunk(file_data=chunk)
         except Exception as e:
             context.set_code(grpc.StatusCode.INTERNAL)
             context.set_details(f"Error reading document: {str(e)}")
 
 def serve():
-    server = grpc.server(futures.ThreadPoolExecutor(max_workers=10))
+    server = grpc.server(futures.ThreadPoolExecutor(max_workers=grpc_config.max_workers))
     document_pb2_grpc.add_DocumentServiceServicer_to_server(DocumentService(), server)
-    server.add_insecure_port("[::]:50051")
-    print("Document gRPC server is running on port 50051...")
+    server_address = f"{grpc_config.server_host}:{grpc_config.server_port}"
+    server.add_insecure_port(server_address)
+    print(f"Document gRPC server is running on {server_address}...")
     server.start()
     server.wait_for_termination()
 

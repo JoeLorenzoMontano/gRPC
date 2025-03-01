@@ -21,9 +21,18 @@ class StorageConfig:
 
 @dataclass
 class VectorDBConfig:
+    # Common settings
+    vector_store: str = os.environ.get("VECTOR_STORE", "chromadb")  # Options: "chromadb", "faiss"
+    collection_name: str = os.environ.get("VECTOR_COLLECTION", "documents")
+    
+    # ChromaDB settings
     chroma_host: str = os.environ.get("CHROMA_HOST", "localhost")
     chroma_port: int = int(os.environ.get("CHROMA_PORT", "8000"))
-    collection_name: str = os.environ.get("CHROMA_COLLECTION", "documents")
+    
+    # FAISS settings
+    faiss_index_path: str = os.environ.get("FAISS_INDEX_PATH", "vector_store/faiss_index")
+    faiss_metadata_path: str = os.environ.get("FAISS_METADATA_PATH", "vector_store/faiss_metadata.json")
+    embedding_dimension: int = int(os.environ.get("EMBEDDING_DIMENSION", "384"))  # Default dimension for Ollama embeddings
 
 @dataclass
 class OllamaConfig:

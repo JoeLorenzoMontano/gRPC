@@ -2,19 +2,19 @@ import json
 import os
 import pdfplumber
 from confluent_kafka import Consumer, KafkaException
-import chromadb
 from langchain_ollama import OllamaEmbeddings
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from config import kafka_config, storage_config, vector_db_config, ollama_config
+from vector_store import get_vector_store
+from ollama_client import OllamaClient
 
 ollama_client = OllamaClient()
 
 # Initialize Ollama Embeddings
 embedding_function = OllamaEmbeddings(base_url=ollama_config.base_url, model=ollama_config.model)
 
-# Initialize Vector Database (ChromaDB)
-chroma_client = chromadb.HttpClient(host=vector_db_config.chroma_host, port=vector_db_config.chroma_port)
-collection = chroma_client.get_or_create_collection(name=vector_db_config.collection_name)
+# Initialize Vector Store (ChromaDB or FAISS)
+vector_store = get_vector_store(vector_db_config.vector_store)
 
 # Kafka Consumer
 consumer = Consumer({
@@ -86,17 +86,20 @@ def process_document(event):
                     "filename": filename,
                     "content_type": content_type,
                     "chunk_index": i,
+                    "document_id": document_id,
                     **metadata  # Merging extracted metadata dynamically
                 }
 
-                # Store in ChromaDB
-                collection.add(
-                    ids=[chunk_id],
+                # Store in vector store (ChromaDB or FAISS)
+                vector_store.add_documents(
+                    document_ids=[chunk_id],
                     documents=[chunk],
                     embeddings=embedding,  # Pass embedding as a list
                     metadatas=[merged_metadata]  # Pass merged metadata
                 )
-                print(f"Chunk {i} of document '{filename}' processed and stored in ChromaDB.")
+                
+                store_type = vector_db_config.vector_store.upper()
+                print(f"Chunk {i} of document '{filename}' processed and stored in {store_type}.")
             else:
                 print(f"Failed to generate embedding for chunk {i} of document '{filename}'.")
 

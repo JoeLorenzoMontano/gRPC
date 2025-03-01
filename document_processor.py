@@ -5,30 +5,25 @@ from confluent_kafka import Consumer, KafkaException
 import chromadb
 from langchain_ollama import OllamaEmbeddings
 from langchain_text_splitters import RecursiveCharacterTextSplitter
-from ollama_client import OllamaClient
+from config import kafka_config, storage_config, vector_db_config, ollama_config
 
 ollama_client = OllamaClient()
 
-# Kafka Config
-KAFKA_BROKER = "localhost:9092"
-KAFKA_TOPIC = "document_uploaded"
-STORAGE_DIR = "documents"
-
 # Initialize Ollama Embeddings
-embedding_function = OllamaEmbeddings(base_url="http://localhost:11434", model="llama3")
+embedding_function = OllamaEmbeddings(base_url=ollama_config.base_url, model=ollama_config.model)
 
 # Initialize Vector Database (ChromaDB)
-chroma_client = chromadb.HttpClient(host="localhost", port=8000)
-collection = chroma_client.get_or_create_collection(name="documents")
+chroma_client = chromadb.HttpClient(host=vector_db_config.chroma_host, port=vector_db_config.chroma_port)
+collection = chroma_client.get_or_create_collection(name=vector_db_config.collection_name)
 
 # Kafka Consumer
 consumer = Consumer({
-    "bootstrap.servers": KAFKA_BROKER,
-    "group.id": "rag_processor",
-    "auto.offset.reset": "latest"
+    "bootstrap.servers": kafka_config.bootstrap_servers,
+    "group.id": kafka_config.consumer_group,
+    "auto.offset.reset": kafka_config.auto_offset_reset
 })
 
-consumer.subscribe([KAFKA_TOPIC])
+consumer.subscribe([kafka_config.document_topic])
 
 # Text Splitter (Configurable)
 text_splitter = RecursiveCharacterTextSplitter(
@@ -59,7 +54,7 @@ def process_document(event):
     document_id = event["document_id"]
     filename = event["filename"]
     content_type = event["content_type"]
-    filepath = os.path.join(STORAGE_DIR, document_id)
+    filepath = os.path.join(storage_config.storage_dir, document_id)
 
     if not os.path.exists(filepath):
         print(f"File {filepath} not found, skipping...")

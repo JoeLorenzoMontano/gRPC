@@ -1,0 +1,10 @@
+grpc==1.70.0
+grpcio-tools
+protobuf
+confluent-kafka==2.3.0
+kafka-python>=2.0.0
+pdfplumber==0.10.3
+chromadb==0.4.22
+langchain-ollama==0.1.1
+apache-flink==1.18.1
+sentence-transformers==2.2.2

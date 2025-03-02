@@ -9,6 +9,7 @@
 - Run Flink consumer: `python kafka/flink_consumer.py`
 - Search documents: `python document_search.py "your query" --store chromadb`
 - RAG query: `python rag_client.py "your question" --store faiss --verbose`
+- Start API service: `python api_service.py` (then visit http://localhost:8080/docs for Swagger)
 
 ## Code Style Guidelines
 - **Imports**: Standard libraries first, then third-party, then local modules

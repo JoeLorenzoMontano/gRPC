@@ -72,6 +72,20 @@ mkdir -p vector_store
 4. **Search for documents**: `python document_search.py "your search query" --store chromadb`
 5. **Use RAG for question answering**: `python rag_client.py "your question" --store faiss --verbose`
 
+### API Service
+The project includes a REST API with Swagger documentation and a simple web UI:
+
+1. **Start the API service**: `python api_service.py`
+2. **Access Swagger documentation**: Open http://localhost:8080/docs in your browser
+3. **Use the web UI**: Open http://localhost:8080 in your browser
+
+The API provides the following endpoints:
+- `/documents/upload`: Upload and process documents
+- `/rag/query`: Ask questions using RAG
+- `/documents/list`: List documents in the system
+- `/vector-stores`: Get information about available vector stores
+- `/health`: Health check endpoint
+
 ### Configuration
 You can configure the system using environment variables or by modifying config.py. Key configurations:
 - `VECTOR_STORE`: Choose between "chromadb" (default) or "faiss"
